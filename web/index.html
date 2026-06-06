@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>web-speed-probe</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <main class="app">
+        <section class="page-header">
+            <p class="page-header__badge">web-speed-probe</p>
+
+            <h1 class="page-header__title">
+                Speed test
+            </h1>
+        </section>
+
+        <section class="panel">
+            <header class="panel__header">
+                <div>
+                    <p class="panel__label">Status</p>
+                    <h2 class="panel__title" id="test-status">Ready</h2>
+                </div>
+            </header>
+
+            <section class="result">
+                <div class="result__value">
+                    <span id="main-speed-value">0</span>
+                </div>
+
+                <div class="result__unit" id="main-speed-unit">
+                    Mbps
+                </div>
+            </section>
+
+            <div class="progress">
+                <div class="progress__bar" id="progress-bar"></div>
+            </div>
+
+            <section class="metrics">
+                <article class="metric">
+                    <span class="metric__label">Download</span>
+                    <strong class="metric__value" id="download-value">-- Mbps</strong>
+                </article>
+
+                <article class="metric">
+                    <span class="metric__label">Upload</span>
+                    <strong class="metric__value" id="upload-value">-- Mbps</strong>
+                </article>
+
+                <article class="metric">
+                    <span class="metric__label">Latency</span>
+                    <strong class="metric__value" id="latency-value">-- ms</strong>
+                </article>
+
+                <article class="metric">
+                    <span class="metric__label">Server</span>
+                    <strong class="metric__value" id="server-info">Local</strong>
+                </article>
+            </section>
+
+            <footer class="actions">
+                <button class="button button--primary" id="start-test-button" type="button">
+                    Start
+                </button>
+
+                <button class="button button--secondary" id="reset-test-button" type="button">
+                    Reset
+                </button>
+            </footer>
+        </section>
+    </main>
+</body>
+</html>
