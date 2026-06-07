@@ -25,6 +25,10 @@ const LATENCY_MEASUREMENT_COUNT = 40
 const DOWNLOAD_WARMUP_MS = 800
 const DOWNLOAD_MEASUREMENT_INTERVAL_MS = 300
 const DOWNLOAD_TIME = 5000
+const UPLOAD_WARMUP_MS = 800
+const UPLOAD_MEASUREMENT_INTERVAL_MS = 300
+const UPLOAD_CHUNK_SIZE = 16 * 1024 * 1024
+const UPLOAD_TIME = 5000
 
 init()
 
@@ -34,8 +38,14 @@ function init() {
     downloadTestButton.addEventListener('click', testDownlaod)
     uploadTestButton.addEventListener('click', testUpload)
     latencyTestButton.addEventListener('click', testLatency)
-    startTestButton.addEventListener('click', testUpload)
+    startTestButton.addEventListener('click', testAll)
     resetTestButton.addEventListener('click', reset)
+}
+
+async function testAll() {
+    await testLatency()
+    await testDownlaod()
+    await testUpload()
 }
 
 async function testUpload() {
@@ -46,6 +56,87 @@ async function testUpload() {
     mainSpeedUnit.textContent = 'Mbps'
     progressBar.style.width = '0%'
     testStatus.textContent = 'Testing upload...'
+
+    try {
+        const chunk = new Uint8Array(UPLOAD_CHUNK_SIZE)
+        const measurements = []
+
+        let sentBytes = 0
+        let windowBytes = 0
+        let lastMeasurementTime = performance.now()
+
+        const start = performance.now()
+
+        while (true) {
+            const now = performance.now()
+            const elapsedMs = now - start
+
+            if (elapsedMs >= UPLOAD_TIME) {
+                break
+            }
+
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: chunk,
+                cache: 'no-store',
+            })
+
+            if (!response.ok) {
+                throw new Error('Upload test failed')
+            }
+
+            const afterUpload = performance.now()
+            const afterUploadElapsedMs = afterUpload - start
+
+            sentBytes += chunk.length
+            windowBytes += chunk.length
+
+            const progress = calculateProgress(afterUploadElapsedMs, UPLOAD_TIME)
+            progressBar.style.width = `${progress}%`
+
+            const windowMs = afterUpload - lastMeasurementTime
+
+            if (windowMs < UPLOAD_MEASUREMENT_INTERVAL_MS) {
+                continue
+            }
+
+            const windowSeconds = windowMs / 1000
+            const mbps = calculateMbps(windowBytes, windowSeconds)
+            const formattedSpeed = formatSpeedWithUnit(mbps)
+
+            mainSpeedValue.textContent = formattedSpeed.value
+            mainSpeedUnit.textContent = formattedSpeed.unit
+
+            if (afterUploadElapsedMs >= UPLOAD_WARMUP_MS) {
+                measurements.push(mbps)
+            }
+
+            windowBytes = 0
+            lastMeasurementTime = afterUpload
+        }
+
+        const fallbackSeconds = UPLOAD_TIME / 1000
+        const fallbackMbps = calculateMbps(sentBytes, fallbackSeconds)
+        const finalMbps = measurements.length > 0 ? getAverage(measurements) : fallbackMbps
+        const formattedFinalSpeed = formatSpeedWithUnit(finalMbps)
+
+        mainSpeedValue.textContent = formattedFinalSpeed.value
+        mainSpeedUnit.textContent = formattedFinalSpeed.unit
+        uploadValue.textContent = `${formattedFinalSpeed.value} ${formattedFinalSpeed.unit}`
+        progressBar.style.width = '100%'
+        testStatus.textContent = 'Done'
+    } catch (error) {
+        console.error(error)
+
+        uploadValue.textContent = '-- Mbps'
+        mainSpeedValue.textContent = '0'
+        mainSpeedUnit.textContent = 'Mbps'
+        progressBar.style.width = '0%'
+        testStatus.textContent = 'Test failed'
+    } finally {
+        startTestButton.disabled = false
+        resetTestButton.disabled = false
+    }
 }
 
 async function testLatency() {
@@ -91,7 +182,7 @@ async function testDownlaod() {
     mainSpeedValue.textContent = '0'
     mainSpeedUnit.textContent = 'Mbps'
     progressBar.style.width = '0%'
-    testStatus.textContent = 'Testing downlaod...'
+    testStatus.textContent = 'Testing download...'
 
     let timeoutId = null
 
