@@ -1,6 +1,6 @@
 "use strict"
 
-import { ping, getMedian, calculateMbps, calculateProgress, formatSpeedWithUnit } from "./utils.js"
+import { ping, getMedian, calculateMbps, calculateProgress, formatSpeedWithUnit, getAverage } from "./utils.js"
 
 const testStatus = document.querySelector('#test-status')
 
@@ -20,6 +20,12 @@ const serverInfo = document.querySelector('#server-info')
 const startTestButton = document.querySelector('#start-test-button')
 const resetTestButton = document.querySelector('#reset-test-button')
 
+const LATENCY_WARMUP_COUNT = 5
+const LATENCY_MEASUREMENT_COUNT = 40
+const DOWNLOAD_WARMUP_MS = 800
+const DOWNLOAD_MEASUREMENT_INTERVAL_MS = 300
+const DOWNLOAD_TIME = 5000
+
 init()
 
 function init() {
@@ -34,6 +40,7 @@ function init() {
 
 async function testUpload() {
     startTestButton.disabled = true
+    resetTestButton.disabled = true
     uploadValue.textContent = '-- Mbps'
     mainSpeedValue.textContent = '0'
     mainSpeedUnit.textContent = 'Mbps'
@@ -43,19 +50,18 @@ async function testUpload() {
 
 async function testLatency() {
     startTestButton.disabled = true
+    resetTestButton.disabled = true
     latencyValue.textContent = '-- ms'
     testStatus.textContent = 'Testing latency...'
 
     try {
-        const warmupCount = 5
-        const measurementCount = 20
         const measurements = []
 
-        for (let i = 0; i < warmupCount; i++) {
+        for (let i = 0; i < LATENCY_WARMUP_COUNT; i++) {
             await fetch('/ping')
         }
 
-        for (let i = 0; i < measurementCount; i++) {
+        for (let i = 0; i < LATENCY_MEASUREMENT_COUNT; i++) {
             const start = performance.now()
             await ping()
             const end = performance.now()
@@ -74,28 +80,33 @@ async function testLatency() {
         testStatus.textContent = 'Test failed'
     } finally {
         startTestButton.disabled = false
+        resetTestButton.disabled = false
     }
 }
 
 async function testDownlaod() {
     startTestButton.disabled = true
+    resetTestButton.disabled = true
     downloadValue.textContent = '-- Mbps'
     mainSpeedValue.textContent = '0'
     mainSpeedUnit.textContent = 'Mbps'
     progressBar.style.width = '0%'
     testStatus.textContent = 'Testing downlaod...'
 
+    let timeoutId = null
+
     try {
-        const response = await fetch('/download')
-        if (!response.ok) {
+        const controller = new AbortController()
+        const signal = controller.signal
+
+        timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIME)
+
+        const response = await fetch('/download', { signal: signal })
+        if (!response.ok || !response.body) {
             throw new Error('Download test failed')
         }
 
         const reader = response.body.getReader()
-        const contentLength = Number(response.headers.get('Content-Length'))
-
-        const measurementIntervalMs = 300
-        const warmupMs = 800
         const measurements = []
 
         let receivedBytes = 0
@@ -105,23 +116,35 @@ async function testDownlaod() {
         const start = performance.now()
 
         while (true) {
-            const { done, value } = await reader.read()
-            if (done) {
+            let result = null
+
+            try {
+                result = await reader.read()
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    break
+                }
+
+                throw error
+            }
+
+            if (result.done) {
                 break
             }
 
             const now = performance.now()
-            const chunkBytes = value.length
+            const chunkBytes = result.value.length
 
             receivedBytes += chunkBytes
             windowBytes += chunkBytes
 
-            const progress = calculateProgress(receivedBytes, contentLength)
+            const elapsedMs = now - start
+            const progress = calculateProgress(elapsedMs, DOWNLOAD_TIME)
             progressBar.style.width = `${progress}%`
 
             const windowMs = now - lastMeasurementTime
 
-            if (windowMs < measurementIntervalMs) {
+            if (windowMs < DOWNLOAD_MEASUREMENT_INTERVAL_MS) {
                 continue
             }
 
@@ -132,7 +155,7 @@ async function testDownlaod() {
             mainSpeedValue.textContent = formattedSpeed.value
             mainSpeedUnit.textContent = formattedSpeed.unit
 
-            if (now - start >= warmupMs) {
+            if (now - start >= DOWNLOAD_WARMUP_MS) {
                 measurements.push(mbps)
             }
 
@@ -159,7 +182,12 @@ async function testDownlaod() {
         progressBar.style.width = '0%'
         testStatus.textContent = 'Test failed'
     } finally {
+        if (timeoutId !== null) {
+            clearTimeout(timeoutId)
+        }
+
         startTestButton.disabled = false
+        resetTestButton.disabled = false
     }
 }
 

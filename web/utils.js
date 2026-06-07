@@ -51,3 +51,15 @@ export function formatSpeedWithUnit(mbps) {
         unit: 'Mbps',
     }
 }
+
+export function getAverage(values) {
+    if (values.length === 0) {
+        return 0
+    }
+
+    const sum = values.reduce(function addValue(total, value) {
+        return total + value
+    }, 0)
+
+    return sum / values.length
+}
