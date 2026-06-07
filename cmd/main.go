@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -33,7 +35,6 @@ func main() {
 
 		w.Header().Set("Content-Type", "application/octet-stream")
 		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Set("Connection", "keep-alive")
 
 		w.WriteHeader(http.StatusOK)
 
@@ -53,6 +54,21 @@ func main() {
 
 			flusher.Flush()
 		}
+	})
+	mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		receivedBytes, err := io.Copy(io.Discard, r.Body)
+		if err != nil {
+			http.Error(w, "Upload failed", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"receivedBytes":%d}`, receivedBytes)
 	})
 
 	srv := &http.Server{
