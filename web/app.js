@@ -1,3 +1,5 @@
+"use strict"
+
 const testStatus = document.querySelector('#test-status')
 
 const mainSpeedValue = document.querySelector('#main-speed-value')
@@ -22,7 +24,7 @@ function init() {
 
 async function testDownlaod() {
     startTestButton.disabled = true
-    downloadValue.textContent = '-- ms'
+    downloadValue.textContent = '-- Mbs'
     mainSpeedValue.textContent = '0'
     mainSpeedUnit.textContent = 'Mbps'
     progressBar.style.width = '0%'
@@ -37,7 +39,14 @@ async function testDownlaod() {
         const reader = response.body.getReader()
         const contentLength = Number(response.headers.get('Content-Length'))
 
+        const measurementIntervalMs = 300
+        const warmupMs = 800
+        const measurements = []
+
         let receivedBytes = 0
+        let windowBytes = 0
+        let lastMeasurementTime = performance.now()
+
         const start = performance.now()
 
         while (true) {
@@ -46,20 +55,44 @@ async function testDownlaod() {
                 break
             }
 
-            receivedBytes += value.length
+            const now = performance.now()
+            const chunkBytes = value.length
 
-            const elapsedSeconds = (performance.now() - start) / 1000
-            const mbps = calculateMbps(receivedBytes, elapsedSeconds)
+            receivedBytes += chunkBytes
+            windowBytes += chunkBytes
+
             const progress = calculateProgress(receivedBytes, contentLength)
+            progressBar.style.width = `${progress}%`
 
+            const windowMs = now - lastMeasurementTime
+
+            if (windowMs < measurementIntervalMs) {
+                continue
+            }
+
+            const windowSeconds = windowMs / 1000
+            const mbps = calculateMbps(windowBytes, windowSeconds)
             const formattedSpeed = formatSpeedWithUnit(mbps)
 
             mainSpeedValue.textContent = formattedSpeed.value
             mainSpeedUnit.textContent = formattedSpeed.unit
-            downloadValue.textContent = `${formattedSpeed.value} ${formattedSpeed.unit}`
-            progressBar.style.width = `${progress}%`
+
+            if (now - start >= warmupMs) {
+                measurements.push(mbps)
+            }
+
+            windowBytes = 0
+            lastMeasurementTime = now
         }
 
+        const fallbackSeconds = (performance.now() - start) / 1000
+        const fallbackMbps = calculateMbps(receivedBytes, fallbackSeconds)
+        const finalMbps = measurements.length > 0 ? getAverage(measurements) : fallbackMbps
+        const formattedFinalSpeed = formatSpeedWithUnit(finalMbps)
+
+        mainSpeedValue.textContent = formattedFinalSpeed.value
+        mainSpeedUnit.textContent = formattedFinalSpeed.unit
+        downloadValue.textContent = `${formattedFinalSpeed.value} ${formattedFinalSpeed.unit}`
         progressBar.style.width = '100%'
         testStatus.textContent = 'Done'
     } catch (error) {
