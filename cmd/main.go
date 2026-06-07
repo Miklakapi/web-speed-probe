@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -17,9 +16,13 @@ func main() {
 	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	staticDir := http.Dir("./web")
+	fileServer := http.FileServer(staticDir)
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Hello")
+	mux.Handle("/", fileServer)
+	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
 	})
 
 	srv := &http.Server{
