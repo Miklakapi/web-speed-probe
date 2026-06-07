@@ -207,6 +207,42 @@ button {
     white-space: nowrap;
 }
 
+.metric--button {
+    appearance: none;
+    width: 100%;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        transform 160ms ease,
+        border-color 160ms ease,
+        background-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.metric--button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(219, 203, 255, 0.32);
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
+}
+
+.metric--button:active {
+    transform: translateY(0);
+}
+
+.metric--button:focus-visible {
+    outline: 2px solid var(--color-primary-strong);
+    outline-offset: 3px;
+}
+
+.metric--button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+}
+
 .actions {
     display: grid;
     grid-template-columns: 1fr auto;

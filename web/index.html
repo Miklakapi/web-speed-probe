@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>web-speed-probe</title>
     <link rel="stylesheet" href="/style.css">
-    <script src="/app.js" defer></script>
+    <script src="/app.js" type="module" defer></script>
 </head>
 <body>
     <main class="app">
@@ -40,20 +40,20 @@
             </div>
 
             <section class="metrics">
-                <article class="metric">
+                <button class="metric metric--button" id="download-test-button" type="button">
                     <span class="metric__label">Download</span>
                     <strong class="metric__value" id="download-value">-- Mbps</strong>
-                </article>
+                </button>
 
-                <article class="metric">
+                <button class="metric metric--button" id="upload-test-button" type="button">
                     <span class="metric__label">Upload</span>
                     <strong class="metric__value" id="upload-value">-- Mbps</strong>
-                </article>
+                </button>
 
-                <article class="metric">
+                <button class="metric metric--button" id="latency-test-button" type="button">
                     <span class="metric__label">Latency</span>
                     <strong class="metric__value" id="latency-value">-- ms</strong>
-                </article>
+                </button>
 
                 <article class="metric">
                     <span class="metric__label">Server</span>
