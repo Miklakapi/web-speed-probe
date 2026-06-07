@@ -2,28 +2,15 @@ package main
 
 import (
 	"context"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 )
 
 const PORT = ":8080"
-const DEFAULT_DOWNLOAD_SIZE = 50_000_000
-
-type zeroReader struct{}
-
-func (zeroReader) Read(buffer []byte) (int, error) {
-	for i := range buffer {
-		buffer[i] = 0
-	}
-
-	return len(buffer), nil
-}
 
 func main() {
 	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -38,32 +25,33 @@ func main() {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.HandleFunc("/download", func(w http.ResponseWriter, r *http.Request) {
-		size := int64(DEFAULT_DOWNLOAD_SIZE)
-		sizeParam := r.URL.Query().Get("size")
-
-		if sizeParam != "" {
-			parsedSize, err := strconv.ParseInt(sizeParam, 10, 64)
-			if err != nil {
-				http.Error(w, "Invalid size parameter", http.StatusBadRequest)
-				return
-			}
-
-			if parsedSize <= 0 {
-				http.Error(w, "Size must be greater than zero", http.StatusBadRequest)
-				return
-			}
-
-			size = parsedSize
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
 		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Connection", "keep-alive")
+
 		w.WriteHeader(http.StatusOK)
 
-		_, err := io.CopyN(w, zeroReader{}, size)
-		if err != nil {
-			log.Println(err)
+		chunk := make([]byte, 64*1024)
+
+		for {
+			select {
+			case <-r.Context().Done():
+				return
+			default:
+			}
+
+			_, err := w.Write(chunk)
+			if err != nil {
+				return
+			}
+
+			flusher.Flush()
 		}
 	})
 
