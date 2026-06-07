@@ -17,7 +17,62 @@ init()
 function init() {
     serverInfo.textContent = window.location.hostname
 
-    startTestButton.addEventListener('click', testLatency)
+    startTestButton.addEventListener('click', testDownlaod)
+}
+
+async function testDownlaod() {
+    startTestButton.disabled = true
+    downloadValue.textContent = '-- ms'
+    mainSpeedValue.textContent = '0'
+    mainSpeedUnit.textContent = 'Mbps'
+    progressBar.style.width = '0%'
+    testStatus.textContent = 'Testing downlaod...'
+
+    try {
+        const response = await fetch('/download')
+        if (!response.ok) {
+            throw new Error('Download test failed')
+        }
+
+        const reader = response.body.getReader()
+        const contentLength = Number(response.headers.get('Content-Length'))
+
+        let receivedBytes = 0
+        const start = performance.now()
+
+        while (true) {
+            const { done, value } = await reader.read()
+            if (done) {
+                break
+            }
+
+            receivedBytes += value.length
+
+            const elapsedSeconds = (performance.now() - start) / 1000
+            const mbps = calculateMbps(receivedBytes, elapsedSeconds)
+            const progress = calculateProgress(receivedBytes, contentLength)
+
+            const formattedSpeed = formatSpeedWithUnit(mbps)
+
+            mainSpeedValue.textContent = formattedSpeed.value
+            mainSpeedUnit.textContent = formattedSpeed.unit
+            downloadValue.textContent = `${formattedSpeed.value} ${formattedSpeed.unit}`
+            progressBar.style.width = `${progress}%`
+        }
+
+        progressBar.style.width = '100%'
+        testStatus.textContent = 'Done'
+    } catch (error) {
+        console.error(error)
+
+        downloadValue.textContent = '-- ms'
+        mainSpeedValue.textContent = '0'
+        mainSpeedUnit.textContent = 'Mbps'
+        progressBar.style.width = '0%'
+        testStatus.textContent = 'Test failed'
+    } finally {
+        startTestButton.disabled = false
+    }
 }
 
 async function testLatency() {
@@ -76,4 +131,34 @@ function getMedian(values) {
     }
 
     return sortedValues[middleIndex]
+}
+
+function calculateMbps(bytes, seconds) {
+    if (seconds <= 0) {
+        return 0
+    }
+
+    return bytes * 8 / seconds / 1_000_000
+}
+
+function calculateProgress(currentBytes, totalBytes) {
+    if (!Number.isFinite(totalBytes) || totalBytes <= 0) {
+        return 0
+    }
+
+    return Math.min(currentBytes / totalBytes * 100, 100)
+}
+
+function formatSpeedWithUnit(mbps) {
+    if (mbps >= 1000) {
+        return {
+            value: (mbps / 1000).toFixed(2),
+            unit: 'Gbps',
+        }
+    }
+
+    return {
+        value: mbps.toFixed(1),
+        unit: 'Mbps',
+    }
 }
