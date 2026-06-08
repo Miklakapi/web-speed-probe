@@ -49,6 +49,7 @@ async function testAll() {
 }
 
 async function testUpload() {
+    setButtonsEnabled(false)
     startTestButton.disabled = true
     resetTestButton.disabled = true
     uploadValue.textContent = '-- Mbps'
@@ -136,10 +137,12 @@ async function testUpload() {
     } finally {
         startTestButton.disabled = false
         resetTestButton.disabled = false
+        setButtonsEnabled(true)
     }
 }
 
 async function testLatency() {
+    setButtonsEnabled(false)
     startTestButton.disabled = true
     resetTestButton.disabled = true
     latencyValue.textContent = '-- ms'
@@ -172,10 +175,12 @@ async function testLatency() {
     } finally {
         startTestButton.disabled = false
         resetTestButton.disabled = false
+        setButtonsEnabled(true)
     }
 }
 
 async function testDownload() {
+    setButtonsEnabled(false)
     startTestButton.disabled = true
     resetTestButton.disabled = true
     downloadValue.textContent = '-- Mbps'
@@ -279,7 +284,14 @@ async function testDownload() {
 
         startTestButton.disabled = false
         resetTestButton.disabled = false
+        setButtonsEnabled(true)
     }
+}
+
+function setButtonsEnabled(enable) {
+    downloadTestButton.disabled = !enable
+    uploadTestButton.disabled = !enable
+    latencyTestButton.disabled = !enable
 }
 
 function reset() {
@@ -291,4 +303,5 @@ function reset() {
     progressBar.style.width = '0%'
     startTestButton.disabled = false
     testStatus.textContent = 'Ready'
+    setButtonsEnabled(true)
 }
