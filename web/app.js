@@ -35,7 +35,7 @@ init()
 function init() {
     serverInfo.textContent = window.location.hostname
 
-    downloadTestButton.addEventListener('click', testDownlaod)
+    downloadTestButton.addEventListener('click', testDownload)
     uploadTestButton.addEventListener('click', testUpload)
     latencyTestButton.addEventListener('click', testLatency)
     startTestButton.addEventListener('click', testAll)
@@ -44,7 +44,7 @@ function init() {
 
 async function testAll() {
     await testLatency()
-    await testDownlaod()
+    await testDownload()
     await testUpload()
 }
 
@@ -175,7 +175,7 @@ async function testLatency() {
     }
 }
 
-async function testDownlaod() {
+async function testDownload() {
     startTestButton.disabled = true
     resetTestButton.disabled = true
     downloadValue.textContent = '-- Mbps'
